@@ -21,6 +21,14 @@ out vec4 v_color;
 uniform vec2 u_resolution;
 uniform float u_lineWidth;
 
+// https://stackoverflow.com/a/9246451
+float distToLine(vec2 pt1, vec2 pt2, vec2 testPt) {
+  vec2 lineDir = pt2 - pt1;
+  vec2 perpDir = vec2(lineDir.y, -lineDir.x);
+  vec2 dirToPt1 = pt1 - testPt;
+  return abs(dot(normalize(perpDir), dirToPt1));
+}
+
 mat3 getTransformMatrix(vec2 startPos, vec2 endPos, float lineWidth) {
   vec2 centerPos = (startPos + endPos) / 2.;
   vec2 delta = endPos - startPos;
@@ -55,6 +63,8 @@ void main() {
   if (in_type == 1.) {
     next = in_cp.xy;
   }
+  // TODO: 二次曲线的端点向量计算，需要比较大调整，要把坐标变换的逻辑放到vertex
+  // shader中
   vec2 v1 = getOffsetVec(in_startPos, prev, next) * u_lineWidth / 2.;
 
   prev = in_startPos;
@@ -66,16 +76,21 @@ void main() {
   vec2 dir = normalize(in_endPos - in_startPos);
   vec2 startOffset =
       (v1 == vec2(0., 0.) ? -u_lineWidth / 2. : dot(v1, dir)) * dir;
-  vec2 endOffset =
-      (v2 == vec2(0., 0.) ? u_lineWidth / 2. : dot(v2, dir)) * dir;
+  vec2 endOffset = (v2 == vec2(0., 0.) ? u_lineWidth / 2. : dot(v2, dir)) * dir;
   float width = u_lineWidth;
+
+  // TODO:
+  // 曲线的width其实可以减半，有效率提升，但是逻辑会更加复杂，需要判断方向和调整transform
   if (in_type == 1.) {
     // curve, larger width
-    // TODO: only for test
-    width = 300.;
+    // 考虑控制点，设定空间（会影响效率）
+    startOffset =
+        (min(0., dot(vec2(in_cp.xy - in_startPos), dir)) - width / 2.) * dir;
+    endOffset =
+        (max(0., dot(vec2(in_cp.xy - in_endPos), dir)) + width / 2.) * dir;
+    width = u_lineWidth + 2. * distToLine(in_startPos, in_endPos, in_cp.xy);
   } else if (in_type == 2.) {
     // arc, larger width
-    // TODO: only for test
     width = max(in_cp.x, in_cp.y) * 4.;
     startOffset = -width / 2. * dir;
     endOffset = width / 2. * dir;
@@ -83,8 +98,6 @@ void main() {
   mat3 transformMatrix = getTransformMatrix(in_startPos + startOffset,
                                             in_endPos + endOffset, width);
   vec2 pos = (transformMatrix * vec3(in_position, 1.)).xy;
-  // vec2 pos = in_position * u_lineWidth + in_startPos;
-  // vec4 pos = u_transform * vec4(in_position, 0., 1.);
 
   // convert the position from pixels to 0.0 to 1.0
   vec2 zeroToOne = pos.xy / u_resolution;
