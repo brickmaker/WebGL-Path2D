@@ -17,6 +17,7 @@ out float v_lineWidth;
 out vec4 v_cp;
 out float v_type;
 out vec4 v_color;
+out vec2 v_arcCenter;
 
 uniform vec2 u_resolution;
 uniform float u_lineWidth;
@@ -27,6 +28,32 @@ float distToLine(vec2 pt1, vec2 pt2, vec2 testPt) {
   vec2 perpDir = vec2(lineDir.y, -lineDir.x);
   vec2 dirToPt1 = pt1 - testPt;
   return abs(dot(normalize(perpDir), dirToPt1));
+}
+
+// w3.org/TR/SVG/implnote.html#ArcConversionEndpointToCenter
+vec4 endPointsToParameterization(vec2 a, vec2 b, vec2 flags, float rx, float ry,
+                                 float phi) {
+  // step.1
+  vec2 c = mat2(cos(phi), -sin(phi), sin(phi), cos(phi)) *
+           vec2((a.x - b.x) / 2., (a.y - b.y) / 2.);
+
+  // step.2
+  vec2 d =
+      sqrt((rx * rx * ry * ry - rx * rx * c.y * c.y - ry * ry * c.x * c.x) /
+           (rx * rx * c.y * c.y + ry * ry * c.x * c.x)) *
+      vec2(rx * c.y / ry, -ry * c.x / rx);
+  if (flags.x == flags.y) {
+    d = -d;
+  }
+
+  // step.3
+  vec2 center = mat2(cos(phi), sin(phi), -sin(phi), cos(phi)) * d +
+                vec2((a.x + b.x) / 2., (a.y + b.y) / 2.);
+
+  // step.4
+  // 用两个端点结合flag来判断，不用计算角度
+
+  return vec4(center, 0., 0.);
 }
 
 mat3 getTransformMatrix(vec2 startPos, vec2 endPos, float lineWidth) {
@@ -107,6 +134,11 @@ void main() {
   vec2 clipSpace = zeroToTwo - 1.0;
 
   gl_Position = vec4(clipSpace, 0, 1);
+
+  vec4 params =
+      endPointsToParameterization(v_startPos, v_endPos, flags, rx, ry, phi);
+
+  v_arcCenter = params.xy;
 
   v_startPos = in_startPos;
   v_endPos = in_endPos;

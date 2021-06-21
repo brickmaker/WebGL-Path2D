@@ -10,6 +10,7 @@ in float v_lineWidth;
 in vec4 v_cp;
 in float v_type;
 in vec4 v_color;
+in vec2 v_arcCenter;
 
 out vec4 fragColor;
 
@@ -91,32 +92,6 @@ float distToQuadraticBezierCurve(vec2 p, vec2 b0, vec2 b1, vec2 b2) {
   return length(get_distance_vector(b0 - p, b1 - p, b2 - p));
 }
 
-// w3.org/TR/SVG/implnote.html#ArcConversionEndpointToCenter
-vec4 endPointsToParameterization(vec2 a, vec2 b, vec2 flags, float rx, float ry,
-                                 float phi) {
-  // step.1
-  vec2 c = mat2(cos(phi), -sin(phi), sin(phi), cos(phi)) *
-           vec2((a.x - b.x) / 2., (a.y - b.y) / 2.);
-
-  // step.2
-  vec2 d =
-      sqrt((rx * rx * ry * ry - rx * rx * c.y * c.y - ry * ry * c.x * c.x) /
-           (rx * rx * c.y * c.y + ry * ry * c.x * c.x)) *
-      vec2(rx * c.y / ry, -ry * c.x / rx);
-  if (flags.x == flags.y) {
-    d = -d;
-  }
-
-  // step.3
-  vec2 center = mat2(cos(phi), sin(phi), -sin(phi), cos(phi)) * d +
-                vec2((a.x + b.x) / 2., (a.y + b.y) / 2.);
-
-  // step.4
-  // 用两个端点结合flag来判断，不用计算角度
-
-  return vec4(center, 0., 0.);
-}
-
 void main() {
   vec2 p = gl_FragCoord.xy;
   vec4 pathColor = v_color;
@@ -138,9 +113,7 @@ void main() {
     float rx = v_cp.x;
     float ry = v_cp.y;
     float phi = v_cp.z;
-    vec4 params =
-        endPointsToParameterization(v_startPos, v_endPos, flags, rx, ry, phi);
-    vec2 center = params.xy;
+    vec2 center = v_arcCenter;
 
     // NOTE: 根据center和两个端点，可以剔除不需要的圆弧
     vec3 cross1 =
