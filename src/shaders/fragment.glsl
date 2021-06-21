@@ -112,14 +112,13 @@ vec4 endPointsToParameterization(vec2 a, vec2 b, vec2 flags, float rx, float ry,
                 vec2((a.x + b.x) / 2., (a.y + b.y) / 2.);
 
   // step.4
-  // TODO...
+  // 用两个端点结合flag来判断，不用计算角度
 
   return vec4(center, 0., 0.);
 }
 
 void main() {
   vec2 p = gl_FragCoord.xy;
-  vec4 backgroundColor = vec4(1., 1., 1., 1.);
   vec4 pathColor = v_color;
   float halfWidth = v_lineWidth / 2.;
 
@@ -143,7 +142,7 @@ void main() {
         endPointsToParameterization(v_startPos, v_endPos, flags, rx, ry, phi);
     vec2 center = params.xy;
 
-    // TODO: 根据center和两个端点，可以剔除不需要的圆弧
+    // NOTE: 根据center和两个端点，可以剔除不需要的圆弧
     vec3 cross1 =
         cross(vec3((v_startPos - center), 0.), vec3((p - center), 0.));
     vec3 cross2 = cross(vec3((p - center), 0.), vec3((v_endPos - center), 0.));
@@ -185,17 +184,18 @@ void main() {
       float dist = distToQuadraticBezierCurve(p, v_startPos, v_cp.xy, v_endPos);
       float epsilon = fwidth(dist);
       if (endArea || dist < halfWidth + epsilon) {
-        float inCurve =
-            1. - smoothstep(halfWidth - epsilon, halfWidth + epsilon, dist);
-        fragColor = mix(backgroundColor, pathColor, inCurve);
+        // TODO: 先不考虑anti-alias，而且这种方式依赖背景颜色，不太行
+        // float inCurve =
+        //     1. - smoothstep(halfWidth - epsilon, halfWidth + epsilon, dist);
+        // fragColor = mix(backgroundColor, pathColor, inCurve);
+        fragColor = pathColor;
       } else {
         discard;
-        // fragColor = backgroundColor;
       }
     }
 
-    // TODO: 需要重构，逻辑比较混乱
-    // TODO: 没考虑bezier曲线的lineCap
+    // TODO:
+    // 由于arc的lineCap/lineJoin没实现，这部分的逻辑没有办法独立，比较混乱，需要重构
     if (v_startMiterVec == vec2(0., 0.)) {
       // 需要判断在线端点内还是外
       bool outStartMainLine =
@@ -229,7 +229,7 @@ void main() {
 
     vec2 miterNormal1 = vec2(-v_startMiterVec.y, v_startMiterVec.x);
     vec2 miterNormal2 = vec2(-v_endMiterVec.y, v_endMiterVec.x);
-    // TODO: 可能不够robust
+    // TODO: 可能不够robust，在曲线情况下，容易削掉图形
     bool outside = dot((p - v_startPos), miterNormal1) < 0. ||
                    dot((p - v_endPos), miterNormal2) > 0.;
     if (outside) {
@@ -250,8 +250,6 @@ void main() {
         }
       } else if (u_lineJoin == 2.) {
         // bevel: 需要计算bevel处的曲线
-        // vec2 lineVec = normalize(v_endPos - v_startPos);
-        // vec2 lineNormal = vec2(-lineVec.y, lineVec.x);
         vec2 startBevelCenter =
             v_startPos + abs(dot(startVecNormal, normalize(v_startMiterVec))) *
                              v_lineWidth / 2. * normalize(v_startMiterVec);
