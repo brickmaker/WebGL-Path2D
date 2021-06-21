@@ -121,6 +121,16 @@ void main() {
     width = max(in_cp.x, in_cp.y) * 4.;
     startOffset = -width / 2. * dir;
     endOffset = width / 2. * dir;
+
+    vec2 flags = vec2(floor(in_cp.w / 2.), mod(in_cp.w, 2.));
+    // vec2 flags = vec2(1., 1.);
+    float rx = in_cp.x;
+    float ry = in_cp.y;
+    float phi = in_cp.z;
+    vec4 params =
+        endPointsToParameterization(in_startPos, in_endPos, flags, rx, ry, phi);
+
+    v_arcCenter = params.xy;
   }
   mat3 transformMatrix = getTransformMatrix(in_startPos + startOffset,
                                             in_endPos + endOffset, width);
@@ -134,11 +144,6 @@ void main() {
   vec2 clipSpace = zeroToTwo - 1.0;
 
   gl_Position = vec4(clipSpace, 0, 1);
-
-  vec4 params =
-      endPointsToParameterization(v_startPos, v_endPos, flags, rx, ry, phi);
-
-  v_arcCenter = params.xy;
 
   v_startPos = in_startPos;
   v_endPos = in_endPos;
