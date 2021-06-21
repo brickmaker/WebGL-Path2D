@@ -90,8 +90,7 @@ void main() {
   if (in_type == 1.) {
     next = in_cp.xy;
   }
-  // TODO: 二次曲线的端点向量计算，需要比较大调整，要把坐标变换的逻辑放到vertex
-  // shader中
+  // TODO: arc的mitter vector，暂时没有考虑
   vec2 v1 = getOffsetVec(in_startPos, prev, next) * u_lineWidth / 2.;
 
   prev = in_startPos;
@@ -118,10 +117,6 @@ void main() {
     width = u_lineWidth + 2. * distToLine(in_startPos, in_endPos, in_cp.xy);
   } else if (in_type == 2.) {
     // arc, larger width
-    width = max(in_cp.x, in_cp.y) * 4.;
-    startOffset = -width / 2. * dir;
-    endOffset = width / 2. * dir;
-
     vec2 flags = vec2(floor(in_cp.w / 2.), mod(in_cp.w, 2.));
     // vec2 flags = vec2(1., 1.);
     float rx = in_cp.x;
@@ -131,6 +126,11 @@ void main() {
         endPointsToParameterization(in_startPos, in_endPos, flags, rx, ry, phi);
 
     v_arcCenter = params.xy;
+
+    // TODO: 这里有半径的话，可以更小一点，四倍半径太粗暴了
+    width = max(in_cp.x, in_cp.y) * 4.;
+    startOffset = -width / 2. * dir;
+    endOffset = width / 2. * dir;
   }
   mat3 transformMatrix = getTransformMatrix(in_startPos + startOffset,
                                             in_endPos + endOffset, width);
