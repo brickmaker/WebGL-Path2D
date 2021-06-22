@@ -16,7 +16,7 @@ out vec4 fragColor;
 
 #define PI 3.14159265359
 
-uniform float u_lineJoin; // 0: miter; 1: bevel; 2: round;
+uniform float u_lineJoin; // 0: miter; 1: round; 2: bevel;
 uniform float u_lineCap;  // 0: none; 1: butt; 2: round;
 
 // reference paper: http://hhoppe.com/ravg.pdf
@@ -105,27 +105,41 @@ void main() {
   vec2 pa = (p - v_startPos);
   vec2 pb = (p - v_endPos);
 
+  // 两个端点的切线向量，向内
+  vec2 startVec = normalize(v_endPos - v_startPos);
+  vec2 endVec = -startVec;
+  if (v_type == 1.) {
+    startVec = normalize(v_cp.xy - v_startPos);
+    endVec = normalize(v_cp.xy - v_endPos);
+  } else if (v_type == 2.) {
+    // TODO: arc的切线向量
+  }
+  vec2 startVecNormal = vec2(-startVec.y, startVec.x);
+  vec2 endVecNormal = vec2(-endVec.y, endVec.x);
+
+  // 是否在端点的延伸区域，用于lineCap和lineJoin的实现
+  // 每个形状的计算不同，但是计算lineCap和lineJoin的逻辑相同
+  bool inStartEndArea = false;
+  bool inEndEndArea = false;
+
   // 考虑mainPath
   if (v_type == 0.) {
     vec2 lineVec = v_endPos - v_startPos;
     bool inStartMainLine = dot(pa, lineVec) >= 0.;
     bool inEndMainLine = dot(pb, -lineVec) >= 0.;
 
+    inStartEndArea = !inStartMainLine;
+    inEndEndArea = !inEndMainLine;
+
     inMainPath = (inStartMainLine && inEndMainLine) ? 1. : 0.;
 
   } else if (v_type == 1.) {
-    vec2 startVec = normalize(v_cp.xy - v_startPos);
-    vec2 endVec = normalize(v_cp.xy - v_endPos);
-
-    vec2 startVecNormal = vec2(-startVec.y, startVec.x);
-    vec2 endVecNormal = vec2(-endVec.y, endVec.x);
-
     float distA = dot(pa, startVec);
     float distB = dot(pb, endVec);
-    bool endArea = (distA < 0. && abs(dot(pa, startVecNormal)) < halfWidth &&
-                    -distA < halfWidth) ||
-                   (distB < 0. && abs(dot(pb, endVecNormal)) < halfWidth &&
-                    -distB < halfWidth);
+
+    inStartEndArea = distA < 0. && abs(dot(pa, startVecNormal)) < halfWidth;
+    inEndEndArea = distB < 0. && abs(dot(pb, endVecNormal)) < halfWidth;
+    bool endArea = inStartEndArea || inEndEndArea;
 
     float dist = distToQuadraticBezierCurve(p, v_startPos, v_cp.xy, v_endPos);
     if (!endArea && dist < halfWidth) {
@@ -153,6 +167,8 @@ void main() {
          flags == vec2(1., 0.) && !(cross1.z > 0. && cross2.z > 0.) ||
          flags == vec2(1., 1.) && !(cross1.z < 0. && cross2.z < 0.));
 
+    // TODO: arc的inEndArea计算
+
     mat2 rotateMat = mat2(cos(-phi), sin(-phi), -sin(-phi), cos(-phi));
     vec2 transformedPos = rotateMat * (p - center);
     float dist = abs(sdEllipse(transformedPos, vec2(rx, ry)));
@@ -161,7 +177,88 @@ void main() {
     }
   }
 
-  if (inMainPath > 0.) {
+  if (v_startMiterVec == vec2(0., 0.)) {
+    // 端点，考虑lineCap
+
+  } else {
+    // 考虑lineJoin
+    vec2 startMiterNormal = vec2(-v_startMiterVec.y, v_startMiterVec.x);
+    bool insideStartMiter = dot((p - v_startPos), startMiterNormal) > 0.;
+
+    // 在有lineJoin的情况下，需要切除Join部分mainPath的重叠区域，这个影响了mainPath，需要discard
+
+    // NOTE: magic number
+    // 因为曲线的关系，线过宽的时候，投影长度会超过halfWidth，要多一点点，之所以判断投影小于halfWidth是为了该判断不影响曲线端点的其它部分，目前没有想到更好的判断方案
+    // 我太难了55
+    float discardThreshold = 1.1 * halfWidth;
+    if (abs(dot(pa, startVecNormal)) < discardThreshold && !insideStartMiter) {
+      discard;
+    }
+
+    if (inStartEndArea) {
+      if (u_lineJoin == 0.) {
+        // miter
+        if (insideStartMiter) {
+          inLineJoin = 1.;
+        }
+      } else if (u_lineJoin == 1.) {
+        // round
+        if (distance(p, v_startPos) < halfWidth) {
+          inLineJoin = 1.;
+        }
+      } else if (u_lineJoin == 2.) {
+        // bevel
+        vec2 startBevelCenter =
+            v_startPos + abs(dot(startVecNormal, normalize(v_startMiterVec))) *
+                             halfWidth * normalize(v_startMiterVec);
+        if (dot((p - startBevelCenter), (v_startPos - startBevelCenter)) > 0.) {
+          inLineJoin = 1.;
+        }
+      }
+    }
+  }
+
+  if (v_endMiterVec == vec2(0., 0.)) {
+    // 端点，考虑lineCap
+  } else {
+    // 考虑lineJoin
+    vec2 endMiterNormal = vec2(-v_endMiterVec.y, v_endMiterVec.x);
+    bool insideEndMiter = dot((p - v_endPos), endMiterNormal) < 0.;
+
+    // 在有lineJoin的情况下，需要切除Join部分mainPath的重叠区域，这个影响了mainPath，需要discard
+
+    // NOTE: magic number
+    // 因为曲线的关系，线过宽的时候，投影长度会超过halfWidth，要多一点点，之所以判断投影小于halfWidth是为了该判断不影响曲线端点的其它部分，目前没有想到更好的判断方案
+    // 我太难了55
+    float discardThreshold = 1.1 * halfWidth;
+    if (abs(dot(pb, endVecNormal)) < discardThreshold && !insideEndMiter) {
+      discard;
+    }
+
+    if (inEndEndArea) {
+      if (u_lineJoin == 0.) {
+        // miter
+        if (insideEndMiter) {
+          inLineJoin = 1.;
+        }
+      } else if (u_lineJoin == 1.) {
+        // round
+        if (distance(p, v_endPos) < halfWidth) {
+          inLineJoin = 1.;
+        }
+      } else if (u_lineJoin == 2.) {
+        // bevel
+        vec2 endBevelCenter =
+            v_endPos + abs(dot(endVecNormal, normalize(v_endMiterVec))) *
+                           v_lineWidth / 2. * normalize(v_endMiterVec);
+        if (dot((p - endBevelCenter), (v_endPos - endBevelCenter)) > 0.) {
+          inLineJoin = 1.;
+        }
+      }
+    }
+  }
+
+  if ((inMainPath + inLineJoin + inLineCap) > 0.) {
     fragColor = v_color;
   } else {
     discard;
