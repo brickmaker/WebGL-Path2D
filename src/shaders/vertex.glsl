@@ -11,8 +11,15 @@ in vec4 in_color;
 
 out vec2 v_startPos;
 out vec2 v_endPos;
+
+// 两个端点相交处的中线向量，用来计算lineJoin等
 out vec2 v_startMiterVec;
 out vec2 v_endMiterVec;
+
+// 线两个端点的切线向量
+out vec2 v_startVec;
+out vec2 v_endVec;
+
 out float v_lineWidth;
 out vec4 v_cp;
 out float v_type;
@@ -71,34 +78,34 @@ mat3 getTransformMatrix(vec2 startPos, vec2 endPos, float lineWidth) {
   return translate * rotate * scale;
 }
 
-vec2 getOffsetVec(vec2 pos, vec2 prev, vec2 next) {
-  if (pos == prev || pos == next) {
+vec2 getMitterVec(vec2 prevDir, vec2 currDir) {
+  if (prevDir == vec2(0., 0.) || currDir == vec2(0., 0.)) {
     return vec2(0., 0.);
   }
-  vec2 line1 = pos - prev;
-  vec2 normal1 = normalize(vec2(-line1.y, line1.x));
-  vec2 line2 = next - pos;
-  vec2 normal2 = normalize(vec2(-line2.y, line2.x));
+  vec2 normal1 = vec2(-prevDir.y, prevDir.x);
+  vec2 normal2 = vec2(-currDir.y, currDir.x);
   vec2 normal = normalize(normal1 + normal2);
   vec2 vec = normal * 1. / abs(dot(normal, normal1));
   return -vec; // 逆时针向外的向量
 }
 
 void main() {
-  vec2 prev = in_prevPos;
-  vec2 next = in_endPos;
-  if (in_type == 1.) {
-    next = in_cp.xy;
+  vec2 prevDir = normalize(in_startPos - in_prevPos);
+  vec2 startVec = vec2(0., 0.);
+  vec2 endVec = vec2(0., 0.);
+  vec2 nextDir = normalize(in_nextPos - in_endPos);
+  if (in_type == 0.) {
+    startVec = normalize(in_endPos - in_startPos);
+    endVec = startVec;
+  } else if (in_type == 1.) {
+    startVec = normalize(in_cp.xy - in_startPos);
+    endVec = normalize(in_endPos - in_cp.xy);
+  } else if (in_type == 2.) {
+    // TODO: arc的mitter vector，暂时没有考虑
   }
-  // TODO: arc的mitter vector，暂时没有考虑
-  vec2 v1 = getOffsetVec(in_startPos, prev, next) * u_lineWidth / 2.;
 
-  prev = in_startPos;
-  next = in_nextPos;
-  if (in_type == 1.) {
-    prev = in_cp.xy;
-  }
-  vec2 v2 = getOffsetVec(in_endPos, prev, next) * u_lineWidth / 2.;
+  vec2 v1 = getMitterVec(prevDir, startVec) * u_lineWidth / 2.;
+  vec2 v2 = getMitterVec(endVec, nextDir) * u_lineWidth / 2.;
   vec2 dir = normalize(in_endPos - in_startPos);
   vec2 startOffset =
       (v1 == vec2(0., 0.) ? -u_lineWidth / 2. : dot(v1, dir)) * dir;
@@ -149,6 +156,8 @@ void main() {
   v_endPos = in_endPos;
   v_startMiterVec = v1;
   v_endMiterVec = v2;
+  v_startVec = startVec;
+  v_endVec = endVec;
   v_lineWidth = u_lineWidth;
   v_cp = in_cp;
   v_type = in_type;

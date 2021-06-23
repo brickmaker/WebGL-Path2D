@@ -6,6 +6,8 @@ in vec2 v_startPos;
 in vec2 v_endPos;
 in vec2 v_startMiterVec;
 in vec2 v_endMiterVec;
+in vec2 v_startVec;
+in vec2 v_endVec;
 in float v_lineWidth;
 in vec4 v_cp;
 in float v_type;
@@ -105,15 +107,10 @@ void main() {
   vec2 pa = (p - v_startPos);
   vec2 pb = (p - v_endPos);
 
-  // 两个端点的切线向量，向内
-  vec2 startVec = normalize(v_endPos - v_startPos);
-  vec2 endVec = -startVec;
-  if (v_type == 1.) {
-    startVec = normalize(v_cp.xy - v_startPos);
-    endVec = normalize(v_cp.xy - v_endPos);
-  } else if (v_type == 2.) {
-    // TODO: arc的切线向量
-  }
+  // 两个端点的切线向量，向内，所以反转一下endVec
+  vec2 startVec = v_startVec;
+  vec2 endVec = -v_endVec;
+
   vec2 startVecNormal = vec2(-startVec.y, startVec.x);
   vec2 endVecNormal = vec2(-endVec.y, endVec.x);
 
