@@ -164,7 +164,11 @@ void main() {
          flags == vec2(1., 0.) && !(cross1.z > 0. && cross2.z > 0.) ||
          flags == vec2(1., 1.) && !(cross1.z < 0. && cross2.z < 0.));
 
-    // TODO: arc的inEndArea计算
+    float distA = dot(pa, startVec);
+    float distB = dot(pb, endVec);
+
+    inStartEndArea = distA < 0. && abs(dot(pa, startVecNormal)) < halfWidth;
+    inEndEndArea = distB < 0. && abs(dot(pb, endVecNormal)) < halfWidth;
 
     mat2 rotateMat = mat2(cos(-phi), sin(-phi), -sin(-phi), cos(-phi));
     vec2 transformedPos = rotateMat * (p - center);
