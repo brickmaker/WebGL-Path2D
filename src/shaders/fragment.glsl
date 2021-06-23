@@ -149,6 +149,8 @@ void main() {
     float phi = v_cp.z;
     vec2 center = v_arcCenter;
 
+    // TODO:
+    // 这个判断是不对的，不是与切线正交，会有扇形的残余，后边写了个补救的方法，但是不够优雅
     // NOTE: 根据center和两个端点，可以剔除不需要的圆弧
     vec3 cross1 = cross(vec3(v_startPos - center, 0.), vec3(p - center, 0.));
     vec3 cross2 = cross(vec3(p - center, 0.), vec3(v_endPos - center, 0.));
@@ -169,6 +171,17 @@ void main() {
 
     inStartEndArea = distA < 0. && abs(dot(pa, startVecNormal)) < halfWidth;
     inEndEndArea = distB < 0. && abs(dot(pb, endVecNormal)) < halfWidth;
+
+    // NOTE:
+    // 又是极其不优雅的判断，为了解决之前根据圆心判断的问题，这个判断还是一种近似的方式，不够robust，但是目前没想到更好的方法
+    bool inStartInnerEndArea =
+        distA > 0. && abs(dot(pa, startVecNormal)) < halfWidth;
+    bool inEndInnerEndArea =
+        distB > 0. && abs(dot(pb, endVecNormal)) < halfWidth;
+
+    // 在圆心扫过的arc里，但是端点的内外要特判，写法虽然可耻但有用
+    inArcFan = !(inStartEndArea || inEndEndArea) &&
+               (inArcFan || (inStartInnerEndArea || inEndInnerEndArea));
 
     mat2 rotateMat = mat2(cos(-phi), sin(-phi), -sin(-phi), cos(-phi));
     vec2 transformedPos = rotateMat * (p - center);

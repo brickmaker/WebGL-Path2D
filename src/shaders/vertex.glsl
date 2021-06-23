@@ -63,6 +63,27 @@ vec4 endPointsToParameterization(vec2 a, vec2 b, vec2 flags, float rx, float ry,
   return vec4(center, 0., 0.);
 }
 
+// 计算椭圆上某点的切线，没有找到现成的实现，采用了转换成标准坐标计算切线再转化回来的方案，可能不够robust
+vec2 calculateTangentVecOfEllipse(vec2 center,        // 圆心坐标
+                                  float rx, float ry, // 两个半径
+                                  float sweep, // 方向，0: 顺时针，1: 逆时针
+                                  float phi, // 与x轴夹角
+                                  vec2 p     // 在椭圆上的某个点
+) {
+  // step.1 转换坐标
+  mat2 rotateMat = mat2(cos(-phi), sin(-phi), -sin(-phi), cos(-phi));
+  vec2 transformedPos = rotateMat * (p - center);
+  // step.2 计算切线
+  // 正确性存疑：https://mathforums.com/threads/the-tangential-and-normal-vectors-of-an-ellipse.328564/
+  vec2 tangent = vec2(rx / ry * transformedPos.y, -ry / rx * transformedPos.x);
+  if (sweep == 1.) {
+    tangent = -tangent;
+  }
+  // step.3 切线转化回来
+  mat2 invRotateMat = mat2(cos(phi), sin(phi), -sin(phi), cos(phi));
+  return invRotateMat * normalize(tangent);
+}
+
 mat3 getTransformMatrix(vec2 startPos, vec2 endPos, float lineWidth) {
   vec2 centerPos = (startPos + endPos) / 2.;
   vec2 delta = endPos - startPos;
@@ -101,7 +122,19 @@ void main() {
     startVec = normalize(in_cp.xy - in_startPos);
     endVec = normalize(in_endPos - in_cp.xy);
   } else if (in_type == 2.) {
-    // TODO: arc的mitter vector，暂时没有考虑
+    vec2 flags = vec2(floor(in_cp.w / 2.), mod(in_cp.w, 2.));
+    // vec2 flags = vec2(1., 1.);
+    float rx = in_cp.x;
+    float ry = in_cp.y;
+    float phi = in_cp.z;
+    vec4 params =
+        endPointsToParameterization(in_startPos, in_endPos, flags, rx, ry, phi);
+
+    v_arcCenter = params.xy;
+    startVec = calculateTangentVecOfEllipse(v_arcCenter, rx, ry, flags.y, phi,
+                                            in_startPos);
+    endVec = calculateTangentVecOfEllipse(v_arcCenter, rx, ry, flags.y, phi,
+                                          in_endPos);
   }
 
   vec2 v1 = getMitterVec(prevDir, startVec) * u_lineWidth / 2.;
@@ -124,16 +157,6 @@ void main() {
     width = u_lineWidth + 2. * distToLine(in_startPos, in_endPos, in_cp.xy);
   } else if (in_type == 2.) {
     // arc, larger width
-    vec2 flags = vec2(floor(in_cp.w / 2.), mod(in_cp.w, 2.));
-    // vec2 flags = vec2(1., 1.);
-    float rx = in_cp.x;
-    float ry = in_cp.y;
-    float phi = in_cp.z;
-    vec4 params =
-        endPointsToParameterization(in_startPos, in_endPos, flags, rx, ry, phi);
-
-    v_arcCenter = params.xy;
-
     // TODO: 这里有半径的话，可以更小一点，四倍半径太粗暴了
     width = max(in_cp.x, in_cp.y) * 4.;
     startOffset = -width / 2. * dir;
