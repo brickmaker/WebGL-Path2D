@@ -49,5 +49,7 @@
     * quadratic curve: `[x1, y1, x2, y2]` 两个控制点的坐标
 * `vec4 color`: 颜色 (r, g, b, a)，范围 0-1
 
+详细参照example里的代码
+
 lineCap, lineJoin, lineWidth 暂时没有暴露接口，有需要在renderer里边改
 
