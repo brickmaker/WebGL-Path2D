@@ -6,23 +6,23 @@
 
 ## Roadmap
 
-[x] 独立的图形绘制
-    [x] 直线
-    [x] 弧线
-    [x] 二次曲线
-    [x] 三次曲线
-[ ] lineCap/lineJoin
-    [x] lineCap
-    [x] lineJoin
-    [ ] 细节处理
-[ ] anti-alias
-    [ ] resolution
-    [ ] smoothstep
-[ ] 数据准备
-    [ ] prevPos/nextPos计算
-[ ] parser
-    [ ] 参数解析
-    [ ] z 闭合命令
+* [x] 独立的图形绘制
+    * [x] 直线
+    * [x] 弧线
+    * [x] 二次曲线
+    * [x] 三次曲线
+* [ ] lineCap/lineJoin
+    * [x] lineCap
+    * [x] lineJoin
+    * [ ] 细节处理
+* [ ] anti-alias
+    * [ ] resolution
+    * [ ] smoothstep
+* [ ] 数据准备
+    * [ ] prevPos/nextPos计算
+* [ ] parser
+    * [ ] 参数解析
+    * [ ] z 闭合命令
 
 
 ## 说明
