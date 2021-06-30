@@ -84,6 +84,68 @@ vec2 calculateTangentVecOfEllipse(vec2 center,        // 圆心坐标
   return invRotateMat * normalize(tangent);
 }
 
+// https://www.shadertoy.com/view/XdVBWd
+// Exact BBox to a quadratic bezier
+// cubic bezier的包围盒，为了提升效率
+// return: 左下和右上点的坐标：vec4(min.x, min.y, max.x, max.y)
+vec4 bboxBezier(in vec2 p0, in vec2 p1, in vec2 p2, in vec2 p3) {
+  // extremes
+  vec2 mi = min(p0, p3);
+  vec2 ma = max(p0, p3);
+
+  vec2 k0 = -1.0 * p0 + 1.0 * p1;
+  vec2 k1 = 1.0 * p0 - 2.0 * p1 + 1.0 * p2;
+  vec2 k2 = -1.0 * p0 + 3.0 * p1 - 3.0 * p2 + 1.0 * p3;
+
+  vec2 h = k1 * k1 - k0 * k2;
+
+  if (h.x > 0.0) {
+    h.x = sqrt(h.x);
+    // float t = (-k1.x - h.x)/k2.x;
+    float t = k0.x / (-k1.x - h.x);
+    if (t > 0.0 && t < 1.0) {
+      float s = 1.0 - t;
+      float q = s * s * s * p0.x + 3.0 * s * s * t * p1.x +
+                3.0 * s * t * t * p2.x + t * t * t * p3.x;
+      mi.x = min(mi.x, q);
+      ma.x = max(ma.x, q);
+    }
+    // t = (-k1.x + h.x)/k2.x;
+    t = k0.x / (-k1.x + h.x);
+    if (t > 0.0 && t < 1.0) {
+      float s = 1.0 - t;
+      float q = s * s * s * p0.x + 3.0 * s * s * t * p1.x +
+                3.0 * s * t * t * p2.x + t * t * t * p3.x;
+      mi.x = min(mi.x, q);
+      ma.x = max(ma.x, q);
+    }
+  }
+
+  if (h.y > 0.0) {
+    h.y = sqrt(h.y);
+    // float t = (-k1.y - h.y)/k2.y;
+    float t = k0.y / (-k1.y - h.y);
+    if (t > 0.0 && t < 1.0) {
+      float s = 1.0 - t;
+      float q = s * s * s * p0.y + 3.0 * s * s * t * p1.y +
+                3.0 * s * t * t * p2.y + t * t * t * p3.y;
+      mi.y = min(mi.y, q);
+      ma.y = max(ma.y, q);
+    }
+    // t = (-k1.y + h.y)/k2.y;
+    t = k0.y / (-k1.y + h.y);
+    if (t > 0.0 && t < 1.0) {
+      float s = 1.0 - t;
+      float q = s * s * s * p0.y + 3.0 * s * s * t * p1.y +
+                3.0 * s * t * t * p2.y + t * t * t * p3.y;
+      mi.y = min(mi.y, q);
+      ma.y = max(ma.y, q);
+    }
+  }
+
+  return vec4(mi, ma);
+}
+
 mat3 getTransformMatrix(vec2 startPos, vec2 endPos, float lineWidth) {
   vec2 centerPos = (startPos + endPos) / 2.;
   vec2 delta = endPos - startPos;
@@ -135,6 +197,8 @@ void main() {
                                             in_startPos);
     endVec = calculateTangentVecOfEllipse(v_arcCenter, rx, ry, flags.y, phi,
                                           in_endPos);
+  } else if (in_type == 3.) {
+    // TODO: cubic curve的normal计算
   }
 
   vec2 v1 = getMitterVec(prevDir, startVec) * u_lineWidth / 2.;
@@ -161,7 +225,14 @@ void main() {
     width = max(in_cp.x, in_cp.y) * 4.;
     startOffset = -width / 2. * dir;
     endOffset = width / 2. * dir;
+  } else if (in_type == 3.) {
+    // cubic curve, 计算包围盒
+    vec4 bbox = bboxBezier(in_startPos, in_cp.xy, in_cp.zw, in_endPos);
+    // TODO: 由于目前的transform比较死，所以大致模仿一下，后续重构
+    width = distance(bbox.xy, bbox.zw);
   }
+
+  // TODO: 计算transform不能统一计算，可能还是要分情况，不然空间浪费太大
   mat3 transformMatrix = getTransformMatrix(in_startPos + startOffset,
                                             in_endPos + endOffset, width);
   vec2 pos = (transformMatrix * vec3(in_position, 1.)).xy;

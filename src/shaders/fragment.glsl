@@ -21,6 +21,41 @@ out vec4 fragColor;
 uniform float u_lineJoin; // 0: miter; 1: round; 2: bevel;
 uniform float u_lineCap;  // 0: none; 1: butt; 2: round;
 
+// cubic bezier distance
+// https://www.shadertoy.com/view/stjGDd
+
+float length2(in vec2 v) { return dot(v, v); }
+
+float sdSegmentSq(in vec2 p, in vec2 a, in vec2 b) {
+  vec2 pa = p - a, ba = b - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return length2(pa - ba * h);
+}
+
+float sdSegment(in vec2 p, in vec2 a, in vec2 b) {
+  return sqrt(sdSegmentSq(p, a, b));
+}
+
+// slow, do not use in production. Can probably do better than
+// tesselation in linear segments.
+vec2 udCubicBezier(vec2 p0, vec2 p1, vec2 p2, in vec2 p3, vec2 pos) {
+  const int kNum = 50;
+  vec2 res = vec2(1e10, 0.0);
+  vec2 a = p0;
+  for (int i = 1; i < kNum; i++) {
+    float t = float(i) / float(kNum - 1);
+    float s = 1.0 - t;
+    vec2 b = p0 * s * s * s + p1 * 3.0 * s * s * t + p2 * 3.0 * s * t * t +
+             p3 * t * t * t;
+    float d = sdSegmentSq(pos, a, b);
+    if (d < res.x)
+      res = vec2(d, t);
+    a = b;
+  }
+
+  return vec2(sqrt(res.x), res.y);
+}
+
 // reference paper: http://hhoppe.com/ravg.pdf
 // distance vector to origin(0, 0)
 float det(vec2 a, vec2 b) { return a.x * b.y - b.x * a.y; }
@@ -187,6 +222,14 @@ void main() {
     vec2 transformedPos = rotateMat * (p - center);
     float dist = abs(sdEllipse(transformedPos, vec2(rx, ry)));
     if (inArcFan && dist < halfWidth) {
+      inMainPath = 1.;
+    }
+  } else if (v_type == 3.) {
+    // cubic
+    vec2 res = udCubicBezier(v_startPos, v_cp.xy, v_cp.zw, v_endPos, p);
+    float dist = res.x;
+
+    if (dist < halfWidth) {
       inMainPath = 1.;
     }
   }
