@@ -154,23 +154,24 @@ void main() {
   bool inStartEndArea = false;
   bool inEndEndArea = false;
 
+  // 计算端点区域
+  float distA = dot(pa, startVec);
+  float distB = dot(pb, endVec);
+
+  inStartEndArea = distA < 0. && distA > -halfWidth &&
+                   abs(dot(pa, startVecNormal)) < halfWidth;
+  inEndEndArea =
+      distB < 0. && distB > -halfWidth && abs(dot(pb, endVecNormal)) < halfWidth;
+
   // 考虑mainPath
   if (v_type == 0.) {
     vec2 lineVec = v_endPos - v_startPos;
     bool inStartMainLine = dot(pa, lineVec) >= 0.;
     bool inEndMainLine = dot(pb, -lineVec) >= 0.;
 
-    inStartEndArea = !inStartMainLine;
-    inEndEndArea = !inEndMainLine;
-
     inMainPath = (inStartMainLine && inEndMainLine) ? 1. : 0.;
 
   } else if (v_type == 1.) {
-    float distA = dot(pa, startVec);
-    float distB = dot(pb, endVec);
-
-    inStartEndArea = distA < 0. && abs(dot(pa, startVecNormal)) < halfWidth;
-    inEndEndArea = distB < 0. && abs(dot(pb, endVecNormal)) < halfWidth;
     bool endArea = inStartEndArea || inEndEndArea;
 
     float dist = distToQuadraticBezierCurve(p, v_startPos, v_cp.xy, v_endPos);
@@ -201,12 +202,6 @@ void main() {
          flags == vec2(1., 0.) && !(cross1.z > 0. && cross2.z > 0.) ||
          flags == vec2(1., 1.) && !(cross1.z < 0. && cross2.z < 0.));
 
-    float distA = dot(pa, startVec);
-    float distB = dot(pb, endVec);
-
-    inStartEndArea = distA < 0. && abs(dot(pa, startVecNormal)) < halfWidth;
-    inEndEndArea = distB < 0. && abs(dot(pb, endVecNormal)) < halfWidth;
-
     // NOTE:
     // 又是极其不优雅的判断，为了解决之前根据圆心判断的问题，这个判断还是一种近似的方式，不够robust，但是目前没想到更好的方法
     bool inStartInnerEndArea =
@@ -229,7 +224,9 @@ void main() {
     vec2 res = udCubicBezier(v_startPos, v_cp.xy, v_cp.zw, v_endPos, p);
     float dist = res.x;
 
-    if (dist < halfWidth) {
+    bool endArea = inStartEndArea || inEndEndArea;
+
+    if (!endArea && dist < halfWidth) {
       inMainPath = 1.;
     }
   }

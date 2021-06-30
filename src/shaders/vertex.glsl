@@ -198,7 +198,8 @@ void main() {
     endVec = calculateTangentVecOfEllipse(v_arcCenter, rx, ry, flags.y, phi,
                                           in_endPos);
   } else if (in_type == 3.) {
-    // TODO: cubic curve的normal计算
+    startVec = normalize(in_cp.xy - in_startPos);
+    endVec = normalize(in_endPos - in_cp.zw);
   }
 
   vec2 v1 = getMitterVec(prevDir, startVec) * u_lineWidth / 2.;
@@ -230,6 +231,8 @@ void main() {
     vec4 bbox = bboxBezier(in_startPos, in_cp.xy, in_cp.zw, in_endPos);
     // TODO: 由于目前的transform比较死，所以大致模仿一下，后续重构
     width = distance(bbox.xy, bbox.zw);
+    startOffset = -width * dir;
+    endOffset = width * dir;
   }
 
   // TODO: 计算transform不能统一计算，可能还是要分情况，不然空间浪费太大

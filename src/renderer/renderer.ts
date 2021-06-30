@@ -103,7 +103,7 @@ export class Renderer {
   }
 
   public draw() {
-    const lineCap = LINE_CAPS.round;
+    const lineCap = LINE_CAPS.butt;
     const lineJoin = LINE_JOINS.miter;
     const lineWidth = 20;
 
