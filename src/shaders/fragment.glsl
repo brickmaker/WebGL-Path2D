@@ -38,6 +38,7 @@ float sdSegment(in vec2 p, in vec2 a, in vec2 b) {
 
 // slow, do not use in production. Can probably do better than
 // tesselation in linear segments.
+// TODO: 这里采用了分段，找最近的点近似作为投影到曲线上的点，后续考虑二分查找
 vec2 udCubicBezier(vec2 p0, vec2 p1, vec2 p2, in vec2 p3, vec2 pos) {
   const int kNum = 50;
   vec2 res = vec2(1e10, 0.0);
@@ -160,8 +161,8 @@ void main() {
 
   inStartEndArea = distA < 0. && distA > -halfWidth &&
                    abs(dot(pa, startVecNormal)) < halfWidth;
-  inEndEndArea =
-      distB < 0. && distB > -halfWidth && abs(dot(pb, endVecNormal)) < halfWidth;
+  inEndEndArea = distB < 0. && distB > -halfWidth &&
+                 abs(dot(pb, endVecNormal)) < halfWidth;
 
   // 考虑mainPath
   if (v_type == 0.) {
