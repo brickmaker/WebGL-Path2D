@@ -1,11 +1,14 @@
-import vertexShaderSource from "../shaders/vertex.glsl";
-import fragmentShaderSource from "../shaders/fragment.glsl";
+import vertexShaderSource from "./shaders/vertex.glsl";
+import fragmentShaderSource from "./shaders/fragment.glsl";
 import {
   createBuffer,
   createIndexBuffer,
   createProgram,
+  createRenderContainer,
   setBufferData,
 } from "./utils";
+import { ShaderProcessor } from "../postProcessing/shaderProcessor";
+import FXAAProcessingShader from "../postProcessing/fxaa/fxaa.glsl";
 
 const LINE_CAPS = {
   none: 0,
@@ -91,7 +94,8 @@ export class Renderer {
     this.vao = this._setVAO();
   }
 
-  public setData(data) {
+  // TODO: data type
+  public setData(data: any) {
     this.instanceCnt = data.startPos.length;
     setBufferData(this.gl, this.startPosBuffer, data.startPos.flat());
     setBufferData(this.gl, this.endPosBuffer, data.endPos.flat());
@@ -102,7 +106,7 @@ export class Renderer {
     setBufferData(this.gl, this.colorBuffer, data.color.flat());
   }
 
-  public draw() {
+  public drawShapes() {
     const lineCap = LINE_CAPS.butt;
     const lineJoin = LINE_JOINS.miter;
     const lineWidth = 20;
@@ -144,8 +148,23 @@ export class Renderer {
     );
   }
 
+  public draw() {
+    const container = createRenderContainer(
+      this.gl,
+      this.canvas.width,
+      this.canvas.height
+    );
+
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, container.frameBuffer);
+    this.drawShapes();
+
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+    const processor = new ShaderProcessor(this.gl, FXAAProcessingShader);
+    processor.process(container.texture);
+  }
+
   private _setVAO() {
-    const vao = this.gl.createVertexArray();
+    const vao = this.gl.createVertexArray() as WebGLVertexArrayObject;
     this.gl.bindVertexArray(vao);
     {
       // connect buffers and attributes

@@ -15,7 +15,7 @@ export default class PathRenderer {
     this.renderer = new Renderer(canvas);
   }
 
-  public setData(data) {
+  public setData(data: []) {
     this.renderer.setData(data);
   }
 
