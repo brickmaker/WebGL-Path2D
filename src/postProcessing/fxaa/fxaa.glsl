@@ -84,5 +84,6 @@ void main() {
   vec4 uv = vec4(texCoord, texCoord - (rcpFrame * (0.5 + FXAA_SUBPIX_SHIFT)));
   vec3 col = FxaaPixelShader(uv, u_sampler, rcpFrame);
   // fragColor = texture(u_sampler, texCoord);
-  fragColor = vec4(col, 1.); // TODO: 'a' channel?
+  float a = texture(u_sampler, texCoord).a;
+  fragColor = vec4(col, a);
 }

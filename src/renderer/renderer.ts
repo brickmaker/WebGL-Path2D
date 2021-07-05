@@ -9,6 +9,7 @@ import {
 } from "./utils";
 import { ShaderProcessor } from "../postProcessing/shaderProcessor";
 import FXAAProcessingShader from "../postProcessing/fxaa/fxaa.glsl";
+import FXXAThreeJSShader from "../postProcessing/fxaa/fxaa-threejs.glsl";
 
 const LINE_CAPS = {
   none: 0,
@@ -160,6 +161,7 @@ export class Renderer {
 
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     const processor = new ShaderProcessor(this.gl, FXAAProcessingShader);
+    // const processor = new ShaderProcessor(this.gl, FXXAThreeJSShader);
     processor.process(container.texture);
   }
 
