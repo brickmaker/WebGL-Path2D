@@ -159,10 +159,8 @@ void main() {
   float distA = dot(pa, startVec);
   float distB = dot(pb, endVec);
 
-  inStartEndArea = distA < 0. && distA > -halfWidth &&
-                   abs(dot(pa, startVecNormal)) < halfWidth;
-  inEndEndArea = distB < 0. && distB > -halfWidth &&
-                 abs(dot(pb, endVecNormal)) < halfWidth;
+  inStartEndArea = distA < 0. && abs(dot(pa, startVecNormal)) < halfWidth;
+  inEndEndArea = distB < 0. && abs(dot(pb, endVecNormal)) < halfWidth;
 
   // 考虑mainPath
   if (v_type == 0.) {
@@ -248,7 +246,7 @@ void main() {
   } else {
     // 考虑lineJoin
     vec2 startMiterNormal = vec2(-v_startMiterVec.y, v_startMiterVec.x);
-    bool insideStartMiter = dot((p - v_startPos), startMiterNormal) > 0.;
+    bool insideStartMiter = dot((p - v_startPos), startMiterNormal) >= 0.;
 
     // 在有lineJoin的情况下，需要切除Join部分mainPath的重叠区域，这个影响了mainPath，需要discard
 
