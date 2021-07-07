@@ -235,7 +235,10 @@ void main() {
     if (inStartEndArea) {
       if (u_lineCap == 1.) {
         // butt
-        inLineCap = 1.;
+        // NOTE：不要超出范围
+        if (distA > -halfWidth) {
+          inLineCap = 1.;
+        }
       } else if (u_lineCap == 2.) {
         // round
         if (distance(p, v_startPos) < v_lineWidth / 2.) {
@@ -286,7 +289,9 @@ void main() {
     if (inEndEndArea) {
       if (u_lineCap == 1.) {
         // butt
-        inLineCap = 1.;
+        if (distB > -halfWidth) {
+          inLineCap = 1.;
+        }
       } else if (u_lineCap == 2.) {
         // round
         if (distance(p, v_endPos) < v_lineWidth / 2.) {
